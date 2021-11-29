@@ -5,6 +5,7 @@
  */
 package chat;
 
+import java.awt.Color;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -22,14 +23,14 @@ import javax.swing.JOptionPane;
 public class InviaRiceviThread extends Thread {
 
     private DatagramSocket peer;
-    boolean ifConnesso;
-    ChatFrame frameGrafico;
-    String nicknameMittente;
-    String nicknameDestinatario;
-    String ipDestinatario;
-    String ipDestinatarioConnesso;
+    private boolean ifConnesso;
+    private ChatFrame frameGrafico;
+    private String nicknameMittente;
+    private String nicknameDestinatario;
+    private String ipDestinatario;
+    private String ipDestinatarioConnesso;
 
-    public InviaRiceviThread() throws SocketException {
+    public InviaRiceviThread(ChatFrame frameGrafico) throws SocketException {
         ifConnesso = false;
         peer = new DatagramSocket(2003);
         this.frameGrafico = frameGrafico;
@@ -44,16 +45,19 @@ public class InviaRiceviThread extends Thread {
     public void setNicknameMittente(String nickname) {
         this.nicknameMittente = nickname;
     }
+    public void setipDestinatario(String ipDestinatario) {
+        this.ipDestinatario = ipDestinatario;
+    }
 
+    public String getNicknameDestinatario() {
+        return nicknameDestinatario;
+    }
+    
     String ricevi() throws IOException {
         byte[] bufferRisposta = new byte[1500];
         DatagramPacket pacchettoRisposta = new DatagramPacket(bufferRisposta, bufferRisposta.length);
-        if (ifConnesso) {
-            ipDestinatario = pacchettoRisposta.getAddress().toString();
-        } else {
-            ipDestinatarioConnesso = pacchettoRisposta.getAddress().toString();
-        }
         peer.receive(pacchettoRisposta);
+            ipDestinatario = pacchettoRisposta.getAddress().toString().substring(1);                        
         return new String(bufferRisposta);
     }
 
@@ -75,42 +79,51 @@ public class InviaRiceviThread extends Thread {
                 messRicevuto = ricevi();
                 System.out.println(messRicevuto);
                 String[] vettElementi = messRicevuto.split(";");
+                System.out.println(vettElementi[0]);
                 //controllo richiesta di connessione se non esistente
                 if (vettElementi[0].equals("c") && ifConnesso == false) {
                     //richiesta di connessione
-                    int scelta = JOptionPane.showConfirmDialog(frameGrafico, vettElementi[1] + "vuole connettersi", "Richiesta connessione...", JOptionPane.YES_NO_OPTION);
+                    int scelta = JOptionPane.showConfirmDialog(frameGrafico, vettElementi[1] + " vuole connettersi", "Richiesta connessione...", JOptionPane.YES_NO_OPTION);
                     if (scelta == 0) {
-                        nicknameDestinatario = vettElementi[1];
+                        nicknameDestinatario = vettElementi[1];  
+                        System.out.println(vettElementi[1]);
                         invia("y;" + nicknameMittente);
-                        frameGrafico.jLabel2.setText("Connesso a:" + nicknameDestinatario + " ip: " + ipDestinatario);
+                        frameGrafico.jLabel2.setText(nicknameMittente);
+                        frameGrafico.jLabel1.setText(nicknameDestinatario + " ip: " + ipDestinatario);
                         ifConnesso = true;
+                        frameGrafico.jButton1.setBackground(Color.red);
+                        frameGrafico.jButton1.setText("Chiudi");
+                        frameGrafico.setAccesso(!frameGrafico.isAccesso());
                     } else {
                         invia("n;");
                     }
                 }
 
-                if (vettElementi[0].equals("m") && ifConnesso == true && ipDestinatarioConnesso == ipDestinatario) {
+                else if (vettElementi[0].equals("m") && ifConnesso == true) {
                     //visualizzo nel frame grafico il messaggio 
-                    frameGrafico.jTextArea1.append("<"+nicknameDestinatario+"> " + vettElementi[1]);
+                    frameGrafico.jTextArea1.append("<" + nicknameDestinatario + "> " + vettElementi[1]+"\n");
 
-                } else {
+                }
                     //ricevo un messaggio senza una connessione/con destinatario differente,invio n; 
+                   
+                
 
-                    invia("n;");
-                }
-
-                if (vettElementi[0].equals("e") && ifConnesso == true && ipDestinatarioConnesso == ipDestinatario) {
+                else if (vettElementi[0].equals("e") && ifConnesso == true) {
+                    frameGrafico.jTextArea1.setText("");
+                    frameGrafico.jLabel1.setText("Non connesso");
                     ifConnesso = false;
-                } else {
-                    //ricevo una chiusura connessione  senza una connessione/con destinatario differente
-                    invia("n;");
+                    frameGrafico.jButton1.setBackground(Color.green);
+                    frameGrafico.jButton1.setText("Apri");
+                    frameGrafico.setAccesso(!frameGrafico.isAccesso());
                 }
-                if (vettElementi[0] == "y") {
-                    //per confermare la connessione
+                    //ricevo una chiusura connessione  senza una connessione/con destinatario differente
+                
+                else if (vettElementi[0].equals("y") && !ifConnesso ) {
+                    //per confermare la connessione               
                     invia("y;");
-                } else if (vettElementi[0] == "n") {
-                    //per negare la connessione
-                    invia("n;");
+                    nicknameDestinatario=vettElementi[1];
+                    frameGrafico.jLabel1.setText(nicknameDestinatario+ " ip: " + ipDestinatario);
+                    ifConnesso = true;
                 }
 
             } catch (IOException ex) {

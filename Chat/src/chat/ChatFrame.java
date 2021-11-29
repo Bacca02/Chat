@@ -6,7 +6,12 @@
 package chat;
 
 import java.awt.Color;
+import java.io.IOException;
+import java.net.SocketException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
 
 /**
  *
@@ -20,23 +25,34 @@ public class ChatFrame extends javax.swing.JFrame {
    private boolean accesso = true;
    private String nickname;
    private String ip;
+   private InviaRiceviThread IeRT;
 
-    public ChatFrame() {
+    public ChatFrame(){
         initComponents();
         this.setLocationRelativeTo(null);
         this.setResizable(false);
-
+       try {
+           IeRT=new InviaRiceviThread(this);
+       } catch (SocketException ex) {
+           Logger.getLogger(ChatFrame.class.getName()).log(Level.SEVERE, null, ex);
+       }
         //All'avvio imposto il nome utente       
         nickname = (String) JOptionPane.showInputDialog(null, "Nuovo nickname", "Inserisci nickname", JOptionPane.PLAIN_MESSAGE);
+        IeRT.setNicknameMittente(nickname);
         if (nickname.length() == 0) {
             nickname = "user";
         }
         jLabel2.setText(nickname);
-        
-        
+        IeRT.start();
 
     }
+    public void setAccesso(boolean accesso) {
+        this.accesso = accesso;
+    }
 
+    public boolean isAccesso() {
+        return accesso;
+    }
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -78,6 +94,11 @@ public class ChatFrame extends javax.swing.JFrame {
         jLabel2.setText("Nome");
 
         jButton3.setText("Invia");
+        jButton3.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent evt) {
+                jButton3MouseClicked(evt);
+            }
+        });
 
         jScrollPane1.setViewportView(jTextPane1);
 
@@ -141,17 +162,39 @@ public class ChatFrame extends javax.swing.JFrame {
             jButton1.setBackground(Color.red);
             jButton1.setText("Chiudi");
             accesso = !accesso;
-
             //Insertisco l'ip
             ip = (String) JOptionPane.showInputDialog(null, "Indirizzo destinatario", "Destinatario", JOptionPane.PLAIN_MESSAGE);
-            jLabel1.setText(ip);
+            
+            try {
+                IeRT.setIpDestinatario(ip);
+                IeRT.invia("c;"+nickname);
+            } catch (IOException ex) {
+                Logger.getLogger(ChatFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
         } else {
             jButton1.setBackground(Color.green);
             jButton1.setText("Apri");
             accesso = !accesso;
+            IeRT.setIpDestinatario(ip);
+            jTextArea1.setText("");
+           try {
+                IeRT.invia("e;");
+                jLabel1.setText("Non connesso");
+            } catch (IOException ex) {
+                Logger.getLogger(ChatFrame.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
 
     }//GEN-LAST:event_jButton1MouseClicked
+
+    private void jButton3MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jButton3MouseClicked
+        jTextArea1.append("<" + nickname + "> " + jTextPane1.getText()+"\n");
+       try {
+           IeRT.invia("m;"+jTextPane1.getText());
+       } catch (IOException ex) {
+           Logger.getLogger(ChatFrame.class.getName()).log(Level.SEVERE, null, ex);
+       }
+    }//GEN-LAST:event_jButton3MouseClicked
 
     /**
      * @param args the command line arguments
@@ -189,14 +232,14 @@ public class ChatFrame extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton jButton1;
+    public javax.swing.JButton jButton1;
     private javax.swing.JButton jButton2;
-    private javax.swing.JButton jButton3;
-    private javax.swing.JLabel jLabel1;
+    public javax.swing.JButton jButton3;
+    public javax.swing.JLabel jLabel1;
     public javax.swing.JLabel jLabel2;
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane3;
     public javax.swing.JTextArea jTextArea1;
-    private javax.swing.JTextPane jTextPane1;
+    public javax.swing.JTextPane jTextPane1;
     // End of variables declaration//GEN-END:variables
 }
